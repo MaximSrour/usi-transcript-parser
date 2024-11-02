@@ -24,15 +24,29 @@ DEBUG = False
 logger = get_logger(__name__)
 
 
-def __get_target_course_names() -> list[str]:
+def __get_target_course_names(filepath = None) -> list[str]:
 	"""
 	Returns the target course names.
 
 	@return {list[str]} - List of target course names.
 	"""
 
-	with open(PATH_TARGET_COURSE_NAMES, "r") as file:
-		return [line.strip().upper() for line in file.readlines()]
+	if filepath is None:
+		filepath = PATH_TARGET_COURSE_NAMES
+
+	try:
+		with open(filepath, "r") as file:
+			contents = [line.strip().upper() for line in file.readlines()]
+
+			# Remove duplicates and empty lines
+			contents = list(filter(None, set(contents)))
+			contents.sort()
+
+			return contents
+
+	except Exception as e:
+		logger.error(f"Error reading target course names: {e}")
+		return []
 
 
 def __get_all_text(pdf_path: str) -> str:
