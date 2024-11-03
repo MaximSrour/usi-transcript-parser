@@ -26,10 +26,12 @@ logger = get_logger(__name__)
 
 def __get_target_course_names(filepath = None) -> list[str]:
 	"""
-	Returns the target course names.
+	Returns the target course names from a file.
 
 	@return {list[str]} - List of target course names.
 	"""
+
+	#TODO: Return a set instead
 
 	if filepath is None:
 		filepath = PATH_TARGET_COURSE_NAMES
@@ -87,10 +89,15 @@ def __get_name_from_text(text: str) -> str:
 	@return {str} - Name of the person.
 	"""
 
+
 	expression = r"(.*)(?:\nPage  \d+ of \d+)"
 	data = re.findall(expression, text)
 
 	if data:
+		# This is necessary since the structure of the PDF is not consistent and
+		# the name on the first page is not extracted correctly.
+		#TODO: Fix the case where only one instance of the name is found which is not the correct one.
+			# Consider using the filename (meh option) or use a better regex to extract more options to consider.
 		most_common = max(set(data), key=data.count)
 		return most_common.title()
 	else:
@@ -232,10 +239,11 @@ def init() -> None:
 
 	if not os.path.exists(DIR_OUTPUT):
 		os.makedirs(DIR_OUTPUT)
-		should_rerun = True
+
 	if not os.path.exists(DIR_INGEST):
 		os.makedirs(DIR_INGEST)
 		should_rerun = True
+
 	if not os.path.exists(PATH_TARGET_COURSE_NAMES):
 		with open(PATH_TARGET_COURSE_NAMES, "w") as f:
 			pass
