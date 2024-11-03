@@ -24,6 +24,30 @@ DEBUG = False
 logger = get_logger(__name__)
 
 
+def __init() -> None:
+	"""
+	Initialises the program.
+	"""
+
+	should_rerun = False
+
+	if not os.path.exists(DIR_OUTPUT):
+		os.makedirs(DIR_OUTPUT)
+
+	if not os.path.exists(DIR_INGEST):
+		os.makedirs(DIR_INGEST)
+		should_rerun = True
+
+	if not os.path.exists(PATH_TARGET_COURSE_NAMES):
+		with open(PATH_TARGET_COURSE_NAMES, "w") as f:
+			pass
+		should_rerun = True
+
+	if should_rerun:
+		logger.warning("Please place the PDF files in the ingest directory and re-run the script.")
+		exit()
+
+
 def __get_target_course_names(filepath = None) -> list[str]:
 	"""
 	Returns the target course names from a file.
@@ -230,36 +254,12 @@ def process_all_pdfs() -> None:
 	__write_to_csv(filtered_data, PATH_FILTERED_DATA)
 
 
-def init() -> None:
-	"""
-	Initialises the program.
-	"""
-
-	should_rerun = False
-
-	if not os.path.exists(DIR_OUTPUT):
-		os.makedirs(DIR_OUTPUT)
-
-	if not os.path.exists(DIR_INGEST):
-		os.makedirs(DIR_INGEST)
-		should_rerun = True
-
-	if not os.path.exists(PATH_TARGET_COURSE_NAMES):
-		with open(PATH_TARGET_COURSE_NAMES, "w") as f:
-			pass
-		should_rerun = True
-
-	if should_rerun:
-		logger.warning("Please place the PDF files in the ingest directory and re-run the script.")
-		exit()
-
-
 def main() -> None:
 	"""
 	Main function.
 	"""
 
-	init()
+	__init()
 
 	process_all_pdfs()
 
