@@ -1,0 +1,29 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[dev-packages]
+black = "*"
+coverage = "*"
+docformatter = "*"
+flake8 = "*"
+isort = "*"
+mako = "*"
+pre-commit = "*"
+pydantic-factories = "*"
+pytest = "*"
+pytest-asyncio = "*"
+pytest-cov = "*"
+pytest-httpx = "*"
+pytest-ordering = "*"
+pytest-xdist = "*"
+testcontainers = "*"
+python-semantic-release = "==7.*"
+
+[packages]
+fitz = "*"
+pymupdf = "*"
+
+[requires]
+python_version = "3.12"
