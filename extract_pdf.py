@@ -5,12 +5,12 @@
 import csv
 import os
 import re
-from os import PathLike
 from typing import List, Union
 
-import fitz
+import fitz  # type: ignore
 from tqdm import tqdm
 
+from datatypes import Course, Result
 from logger_util import get_logger
 
 DIR_ROOT = "."
@@ -29,7 +29,7 @@ DEBUG = False
 logger = get_logger(__name__)
 
 
-def __init() -> None:
+def __init():
     """
     Initialises the program.
     """
@@ -56,9 +56,7 @@ def __init() -> None:
         exit()
 
 
-def __get_target_course_names(
-    filepath: Union[os.PathLike[str], str, None] = None
-) -> list[str]:
+def __get_target_courses(filepath: Union[os.PathLike[str], str, None] = None):
     """
     Returns the target course names from a file.
 
@@ -75,15 +73,21 @@ def __get_target_course_names(
         with open(filepath, "r") as f:
             reader = csv.reader(f)
             contents = list(reader)[1:]
-            contents.sort(key=lambda x: x[1])
 
-            course_names = [row[1].strip().upper() for row in contents]
+            courses: List[Course] = []
+            for i in range(len(contents)):
+                course_code = contents[i][0]
+                course_name = contents[i][1]
 
-            return course_names
+                courses.append(Course(course_code, course_name))
+
+            courses.sort(key=lambda x: x.name)
+
+            return courses
 
     except Exception as e:
         logger.error(f"Error reading target course names: {e}")
-        return []
+        return list[Course]()
 
 
 def __get_all_text(pdf_path: str) -> str:
@@ -95,7 +99,7 @@ def __get_all_text(pdf_path: str) -> str:
     """
 
     doc = fitz.open(pdf_path)
-    all_text = ""
+    all_text: str = ""
 
     for i in range(len(doc)):
         page = doc.load_page(i)
@@ -104,7 +108,7 @@ def __get_all_text(pdf_path: str) -> str:
     return __sanitise_text(all_text)
 
 
-def __sanitise_text(text: str) -> str:
+def __sanitise_text(text: str):
     """
     Sanitises the text extracted from a PDF file.
 
@@ -173,7 +177,7 @@ def __find_all_pdfs() -> list[str]:
     @return {list[str]} - List of paths to all PDF files.
     """
 
-    pdfs = []
+    pdfs: List[str] = []
     for root, dirs, files in os.walk(DIR_INGEST):
         for file in files:
             if file.endswith(".pdf"):
@@ -182,7 +186,7 @@ def __find_all_pdfs() -> list[str]:
     return pdfs
 
 
-def __filter_data(data: list[list[str]]) -> list[list[str]]:
+def __filter_data(data: List[Result]):
     """
     Filters the data to only include the target courses.
 
@@ -190,14 +194,23 @@ def __filter_data(data: list[list[str]]) -> list[list[str]]:
     @return {list[list[str]]} - Filtered data.
     """
 
-    filtered_data = []
-    for row in data:
-        if row[3] in __get_target_course_names():
-            filtered_data.append(row)
+    course_data = __get_target_courses()
+
+    course_codes = [course.code for course in course_data]
+    course_names = [course.name for course in course_data]
+
+    filtered_data: List[Result] = []
+
+    for result in data:
+        # TODO: Enable this when the data is available
+        # if row[2] in course_codes and row[3] in course_names:
+        if result.course.name in course_names:
+            filtered_data.append(result)
+
     return filtered_data
 
 
-def __write_to_csv(data: list[list[str]], path: str) -> None:
+def __write_to_csv(data: List[Result], path: str):
     """
     Writes the data to a CSV file.
 
@@ -210,7 +223,7 @@ def __write_to_csv(data: list[list[str]], path: str) -> None:
             # TODO: Replace with Pandas
             writer = csv.writer(f)
             writer.writerow(["Name", "Pass", "Course Code", "Course Name"])
-            writer.writerows(data)
+            writer.writerows([result.to_list() for result in data])
 
         logger.info(f"Successfully wrote to CSV file: {path}")
 
@@ -218,7 +231,7 @@ def __write_to_csv(data: list[list[str]], path: str) -> None:
         logger.error(f"Error writing to CSV file: {e}")
 
 
-def process_pdf(pdf_path: str) -> list[list[str]]:
+def process_pdf(pdf_path: str):
     """
     Processes a PDF file.
     @param {str} pdf_path - Path to the PDF file.
@@ -234,16 +247,15 @@ def process_pdf(pdf_path: str) -> list[list[str]]:
     course_data = __get_all_courses(extracted_text)
 
     # TODO: Replace with Pandas
-    output = []
+    output: List[Result] = []
     for row in course_data:
-        # TODO: Add a dataclass for the
-        row = [name, row[2], row[0], row[1]]
-        output.append(row)
+        result = Result(name, row[2], Course(row[0], row[1]))
+        output.append(result)
 
     return output
 
 
-def process_all_pdfs() -> None:
+def process_all_pdfs():
     """
     Processes all PDF files in the ingest directory.
     """
@@ -254,15 +266,15 @@ def process_all_pdfs() -> None:
         logger.warning("No PDF files found in the ingest directory.")
         exit()
 
-    output_data = []
-    filtered_data = []
+    output_data: List[Result] = []
+    filtered_data: List[Result] = []
 
     logger.info(f"Processing {len(pdf_paths)} PDF files...")
 
     for pdf_path in tqdm(pdf_paths, leave=False):
         output_data += process_pdf(pdf_path)
 
-    output_data.sort(key=lambda x: (x[0], x[3]))
+    output_data.sort(key=lambda x: (x.student_name, x.course.name))
 
     logger.info("Finished!")
 
@@ -272,7 +284,7 @@ def process_all_pdfs() -> None:
     __write_to_csv(filtered_data, PATH_FILTERED_DATA)
 
 
-def test_solo() -> None:
+def test_solo():
     """
     Tests a single PDF file.
     """
@@ -286,7 +298,7 @@ def test_solo() -> None:
     print(output_data)
 
 
-def main() -> None:
+def main():
     """
     Main function.
     """
