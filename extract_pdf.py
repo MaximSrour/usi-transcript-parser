@@ -87,7 +87,7 @@ def __get_target_courses(filepath: Union[os.PathLike[str], str, None] = None):
         return list[Course]()
 
 
-def __get_all_text(pdf_path: str) -> str:
+def __get_all_text(pdf_path: str):
     """
     Extracts all text from a PDF file.
 
@@ -110,14 +110,31 @@ def __sanitise_text(text: str):
     Sanitises the text extracted from a PDF file.
 
     @param {str} text - Raw text extracted from a PDF file.
+
     @return {str} - Sanitised text.
     """
 
+    # Insert a delimeter after the provider name in the text.
     sanitised_text = re.sub(r"\(IdenƟĮer\) - \(FIⁱⁱ\)\n", "---\n", text)
+
+    # Insert a delimiter after the date ranges in the text.
+    sanitised_text = re.sub(
+        r"(?:\d{2}\/\d{2}\/\d{4}-\d{2}\/\d{2}\/\d{4})", r"\g<0>\n---", sanitised_text
+    )
+
+    # This is to get rid of extra text with "Provider" in it which triggers the regex to extract the provider name.
+    sanitised_text = re.sub(
+        r"National VET Provider Collection",
+        "",
+        sanitised_text,
+    )
+
+    sanitised_text = "---\n" + sanitised_text
+
     return sanitised_text
 
 
-def __get_name_from_text(text: str) -> str:
+def __get_name_from_text(text: str):
     """
     Extracts the name of the person from the text.
 
@@ -126,7 +143,7 @@ def __get_name_from_text(text: str) -> str:
     """
 
     expression = r"(.*)(?:\nPage  \d+ of \d+)"
-    data = re.findall(expression, text)
+    data: List[str] = re.findall(expression, text)
 
     if data:
         # This is necessary since the structure of the PDF is not consistent and
@@ -153,25 +170,44 @@ def __get_all_courses(text: str, student_name: str):
     @return {list[list[str]]} - List of courses.
     """
 
-    expression = r"(.*)(\n.*){0,1}\n(.*)\n\((.*)\) - \(.*\)(?:\n\d{2}\/\d{2}\/\d{4}-\d{2}\/\d{2}\/\d{4})"
-    data = re.findall(expression, text)
+    # expression = r"(?:(?:Provider ([\s\S]*?\))\nUnit\/Module\nOutcome\nEnrolment Period\n)?(?=---)){0,1}(?:---\n([\s\S]*?)\((.*)\) - \(.*\)(?:\n\d{2}\/\d{2}\/\d{4}-\d{2}\/\d{2}\/\d{4})\n(?=---))"
+    expression = r"---\n([\s\S]*?)(?=---)"
+    matches: List[str] = re.findall(expression, text)
 
-    output: List[Result] = []
-    for row in data:
-        course_name = row[0] + row[1]
-        course_name = re.sub(r"\n", " ", course_name)
-        course_name = re.sub(r"---", "", course_name)
-        course_name = course_name.strip()
+    provider_expression = (
+        r"(?:Provider ([\s\S]*?\))\nUnit\/Module\nOutcome\nEnrolment Period\n)"
+    )
+    course_expression = (
+        r"([\s\S]*?)\((.*)\) - \(.*\)(?:\n\d{2}\/\d{2}\/\d{4}-\d{2}\/\d{2}\/\d{4})"
+    )
 
-        mark = row[2]
-        course_code = row[3]
+    provider: str = ""
+    results: List[Result] = []
 
-        output.append(Result(student_name, mark, Course(course_code, course_name)))
+    for block in matches:
+        provider_data = re.findall(provider_expression, block)
+        course_data = re.findall(course_expression, block)
 
-    return output
+        if provider_data:
+            provider = provider_data[0]
+            continue
+        elif course_data:
+            course_name_raw = course_data[0][0]
+            course_name_raw = re.sub(r"\n", " ", course_name_raw)
+            course_name_raw = course_name_raw.strip()
+
+            course_code = course_data[0][1]
+            course_name = " ".join(course_name_raw.split(" ")[:-1])
+            course_result = course_name_raw.split(" ")[-1]
+
+            course = Course(course_code, course_name, provider)
+            result = Result(student_name, course_result, course)
+            results.append(result)
+
+    return results
 
 
-def __find_all_pdfs() -> list[str]:
+def __find_all_pdfs():
     """
     Finds all PDF files in the ingest directory.
 
@@ -221,7 +257,9 @@ def __write_to_csv(data: List[Result], path: str):
         with open(path, "w") as f:
             # TODO: Replace with Pandas
             writer = csv.writer(f)
-            writer.writerow(["Name", "Pass", "Course Code", "Course Name"])
+            writer.writerow(
+                ["Name", "Pass", "Course Code", "Course Name", "Course Provider"]
+            )
             writer.writerows([result.to_list() for result in data])
 
         logger.info(f"Successfully wrote to CSV file: {path}")
@@ -230,7 +268,7 @@ def __write_to_csv(data: List[Result], path: str):
         logger.error(f"Error writing to CSV file: {e}")
 
 
-def process_pdf(pdf_path: str, write_debug: bool = False) -> List[Result]:
+def process_pdf(pdf_path: str, write_debug: bool = False):
     """
     Processes a PDF file.
     @param {str} pdf_path - Path to the PDF file.
@@ -282,7 +320,7 @@ def test_solo():
     Tests a single PDF file.
     """
 
-    pdf_path = "./docs/Matt Croft 100682228 USI Transcript1.pdf"
+    pdf_path = "./docs/DAVID ALAN POCOCK.pdf"
     output_data = process_pdf(pdf_path, write_debug=True)
 
     print(output_data)
