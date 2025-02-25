@@ -22,8 +22,8 @@ testcontainers = "*"
 python-semantic-release = "==7.*"
 
 [packages]
-fitz = "*"
 pymupdf = "*"
+fitz = "*"
 
 [requires]
 python_version = "3.12"

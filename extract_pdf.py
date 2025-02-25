@@ -5,6 +5,8 @@
 import csv
 import os
 import re
+from os import PathLike
+from typing import List, Union
 
 import fitz
 from tqdm import tqdm
@@ -15,7 +17,7 @@ DIR_ROOT = "."
 DIR_OUTPUT = os.path.join(DIR_ROOT, "out")
 DIR_INGEST = os.path.join(DIR_ROOT, "docs")
 
-PATH_TARGET_COURSE_NAMES = os.path.join(DIR_ROOT, "target_course_names.txt")
+PATH_TARGET_COURSE_NAMES = os.path.join(DIR_ROOT, "target_course_names.csv")
 PATH_OUTPUT_DATA = os.path.join(DIR_OUTPUT, "output.csv")
 PATH_FILTERED_DATA = os.path.join(DIR_OUTPUT, "filtered.csv")
 PATH_DEBUG_EXTRACTED_TEXT = os.path.join(DIR_OUTPUT, "debug_extracted_text.txt")
@@ -54,7 +56,9 @@ def __init() -> None:
         exit()
 
 
-def __get_target_course_names(filepath=None) -> list[str]:
+def __get_target_course_names(
+    filepath: Union[os.PathLike[str], str, None] = None
+) -> list[str]:
     """
     Returns the target course names from a file.
 
@@ -67,14 +71,15 @@ def __get_target_course_names(filepath=None) -> list[str]:
         filepath = PATH_TARGET_COURSE_NAMES
 
     try:
-        with open(filepath, "r") as file:
-            contents = [line.strip().upper() for line in file.readlines()]
 
-            # Remove duplicates and empty lines
-            contents = list(filter(None, set(contents)))
-            contents.sort()
+        with open(filepath, "r") as f:
+            reader = csv.reader(f)
+            contents = list(reader)[1:]
+            contents.sort(key=lambda x: x[1])
 
-            return contents
+            course_names = [row[1].strip().upper() for row in contents]
+
+            return course_names
 
     except Exception as e:
         logger.error(f"Error reading target course names: {e}")
