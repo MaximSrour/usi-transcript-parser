@@ -23,9 +23,6 @@ PATH_FILTERED_DATA = os.path.join(DIR_OUTPUT, "filtered.csv")
 PATH_DEBUG_EXTRACTED_TEXT = os.path.join(DIR_OUTPUT, "debug_extracted_text.txt")
 PATH_REPORT = os.path.join(DIR_OUTPUT, "report.csv")
 
-# TODO: Replace with an environment variable
-DEBUG = False
-
 logger = get_logger(__name__)
 
 
@@ -148,7 +145,7 @@ def __get_name_from_text(text: str) -> str:
         return None
 
 
-def __get_all_courses(text: str) -> list[list[str]]:
+def __get_all_courses(text: str, student_name: str):
     """
     Extracts all courses from the text.
 
@@ -159,13 +156,17 @@ def __get_all_courses(text: str) -> list[list[str]]:
     expression = r"(.*)(\n.*){0,1}\n(.*)\n\((.*)\) - \(.*\)(?:\n\d{2}\/\d{2}\/\d{4}-\d{2}\/\d{2}\/\d{4})"
     data = re.findall(expression, text)
 
-    output = []
+    output: List[Result] = []
     for row in data:
-        text = row[0] + row[1]
-        text = re.sub(r"\n", " ", text)
-        text = re.sub(r"---", "", text)
-        text = text.strip()
-        output += [[row[3], text, row[2]]]
+        course_name = row[0] + row[1]
+        course_name = re.sub(r"\n", " ", course_name)
+        course_name = re.sub(r"---", "", course_name)
+        course_name = course_name.strip()
+
+        mark = row[2]
+        course_code = row[3]
+
+        output.append(Result(student_name, mark, Course(course_code, course_name)))
 
     return output
 
@@ -178,7 +179,7 @@ def __find_all_pdfs() -> list[str]:
     """
 
     pdfs: List[str] = []
-    for root, dirs, files in os.walk(DIR_INGEST):
+    for root, _, files in os.walk(DIR_INGEST):
         for file in files:
             if file.endswith(".pdf"):
                 pdfs.append(os.path.join(root, file))
@@ -202,9 +203,7 @@ def __filter_data(data: List[Result]):
     filtered_data: List[Result] = []
 
     for result in data:
-        # TODO: Enable this when the data is available
-        # if row[2] in course_codes and row[3] in course_names:
-        if result.course.name in course_names:
+        if result.course.code in course_codes and result.course.name in course_names:
             filtered_data.append(result)
 
     return filtered_data
@@ -231,7 +230,7 @@ def __write_to_csv(data: List[Result], path: str):
         logger.error(f"Error writing to CSV file: {e}")
 
 
-def process_pdf(pdf_path: str):
+def process_pdf(pdf_path: str, write_debug: bool = False) -> List[Result]:
     """
     Processes a PDF file.
     @param {str} pdf_path - Path to the PDF file.
@@ -239,20 +238,14 @@ def process_pdf(pdf_path: str):
     """
 
     extracted_text = __get_all_text(pdf_path)
-    if DEBUG:
+    if write_debug:
         with open(PATH_DEBUG_EXTRACTED_TEXT, "w") as f:
             f.write(extracted_text)
 
     name = __get_name_from_text(extracted_text)
-    course_data = __get_all_courses(extracted_text)
+    course_data = __get_all_courses(extracted_text, name)
 
-    # TODO: Replace with Pandas
-    output: List[Result] = []
-    for row in course_data:
-        result = Result(name, row[2], Course(row[0], row[1]))
-        output.append(result)
-
-    return output
+    return course_data
 
 
 def process_all_pdfs():
@@ -289,11 +282,8 @@ def test_solo():
     Tests a single PDF file.
     """
 
-    global DEBUG
-    DEBUG = True
-
     pdf_path = "./docs/Matt Croft 100682228 USI Transcript1.pdf"
-    output_data = process_pdf(pdf_path)
+    output_data = process_pdf(pdf_path, write_debug=True)
 
     print(output_data)
 
