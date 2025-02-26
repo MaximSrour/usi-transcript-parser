@@ -10,20 +10,18 @@ from typing import List, Union
 import fitz  # type: ignore
 from tqdm import tqdm
 
+from config import (
+    DIR_INGEST,
+    DIR_OUTPUT,
+    PATH_DEBUG_EXTRACTED_TEXT,
+    PATH_FILTERED_DATA,
+    PATH_OUTPUT_DATA,
+    PATH_TARGET_COURSE_NAMES,
+)
 from datatypes import Course, Result
-from logger_util import get_logger
+from logger_util import getLogger
 
-DIR_ROOT = "."
-DIR_OUTPUT = os.path.join(DIR_ROOT, "out")
-DIR_INGEST = os.path.join(DIR_ROOT, "docs")
-
-PATH_TARGET_COURSE_NAMES = os.path.join(DIR_ROOT, "target_course_names.csv")
-PATH_OUTPUT_DATA = os.path.join(DIR_OUTPUT, "output.csv")
-PATH_FILTERED_DATA = os.path.join(DIR_OUTPUT, "filtered.csv")
-PATH_DEBUG_EXTRACTED_TEXT = os.path.join(DIR_OUTPUT, "debug_extracted_text.txt")
-PATH_REPORT = os.path.join(DIR_OUTPUT, "report.csv")
-
-logger = get_logger(__name__)
+logger = getLogger(__name__)
 
 
 def __init():
